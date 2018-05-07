@@ -42,4 +42,59 @@ def calc_attribute_weights(X):
     
     return weights
 
+
+def calc_object_significances(full_PE,part_counts):
+    total = sum(part_counts)
+    part_entropies = part_counts * np.log2(part_counts)
+    total_part_ents = sum(part_entropies)
+    partition_significance = []
+    
+    for index, c in enumerate(part_counts):
+        part_removed_ent = (total - c) + (total_part_ents - part_entropies[index])/(total - c)
+        
+        if part_removed_ent > full_PE:
+            partition_significance.append((part_removed_ent - full_PE)/(full_PE*c))
+        else:
+            partition_significance.append(0)
+    
+    return partition_significance                             
+
+def peof(X):
+    num_rows = X.shape[0]
+    peof_factors = np.zeros(X.shape)
+    sorted_attribute_weights = calc_attribute_weights(X)
+    
+    for j in range(len(sorted_attribute_weights)):
+        w_j = sorted_attribute_weights[j]
+        higher_attrs = sorted_attribute_weights[j+1:]
+        W_j = sum(higher_attrs)/len(higher_attrs)
+        
+        attr_part, attr_counts = attribute_partition(X[:,j])
+        attr_PE = calc_partition_entropy(attr_part)
+        attr_partition_sigs = calc_object_significances(attr_PE, attr_counts)
+ 
+        higher_attrs_part, higher_attrs_counts = attribute_partition(X[:,j+1:])
+        higher_attrs_PE = calc_partition_entropy(higher_attrs_PE)
+        higher_attrs_partition_sigs = calc_object_significances(higher_attrs_PE, higher_attrs_counts)
+
+        for i in range(num_rows):
+            row = X[i]
+            attr_val = row[j]
+            higher_attrs_val = row[j+1:]
+            
+            attr_partition = attr_part.index(attr_val)
+            attr_cnt = attr_counts[attr_partition]
+            attr_sig = attr_partition_sigs[attr_partition]
+            
+            higher_attrs_partition = higher_attrs_part.index(higher_attrs_val)
+            higher_attrs_cnt = higher_attrs_counts[higher_attrs_partition]
+            higher_attrs_sig = higher_attrs_partition_sigs[higher_attrs_partition]
+            
+            peof_factors[i][j] = (w_j * attr_cnt * attr_sig + W_j * higher_attrs_cnt * higher_attrs_sig)/(2*num_rows)
+            
+        return np.sum(peof_factors, axis =1)
+
+            
+        
+        
     
