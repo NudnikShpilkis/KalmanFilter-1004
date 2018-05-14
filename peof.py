@@ -97,4 +97,89 @@ def peof(X):
             
         
         
+###############################################################################
+'''
+def calcPartitionEntropy(counts):
+    probs = counts/counts.sum()
+    return -np.sum(probs * np.log(probs))
+
+def calcSignificance(tot_pe, new_pe):
+    return (tot_pe - new_pe)/(tot_pe + new_pe)
+
+def calcPartitionEntropyAndSignificance(tot_pe, features):
+    counts = np.array(list(itertools.chain.from_iterable([list(feat.valDict.values()) for feat in features])))
+    probs = counts/counts.sum()
+    part_pe = -np.sum(probs * np.log(probs))
+    return (tot_pe - part_pe)/(tot_pe + part_pe)
+
+def calcWeights(features, info):
+    weights = {}
+    c_zero = 0
+    zero_ind = np.zeros(features.shape[0], dtype=int)
+    tot_counts = np.array(list(itertools.chain.from_iterable([list(feat.valDict.values()) for feat in features])))
+    tot_pe = calcPartitionEntropy(tot_counts)
+    
+    for f, featRem in enumerate(features):
+        sig = calcPartitionEntropyAndSignificance(tot_pe, [feat for feat in features if feat != featRem])
+        
+        if sig > 0: 
+            weights[f] = 1 + sig
+        else:
+            zero_ind[c_zero] += f
+            c_zero += 1       
+         
+    if c_zero > 0:
+        zero_ind = zero_ind[0:c_zero]
+        weight_zero = (c_zero)/(info['n_ftrs'] + np.sqrt(info['n_ftrs'] - c_zero))
+        for z in zero_ind:
+            weights[z] = weight_zero
+    
+    return weights
+
+def calcObjetSignificance(full_pe, part_counts):
+    part_tot = part_counts.sum()
+    part_e = (part_counts * np.log(part_counts))
+    part_tot_e = sum(part_e)
+    part_sig = np.zeros(part_counts.shape[0])
+    
+    part_eRem = (part_tot - part_counts) - (part_tot_e - part_e)/(part_tot - part_counts)
+    part_sig[part_eRem > full_pe] = (part_eRem - full_pe)/(full_pe*part_counts) 
+    
+    return part_sig                            
+
+def peof(features, info):
+    peof_factors = np.zeros((info['n_rows'], info['n_ftrs']))
+    ftr_weights = calcWeights(features, info)
+    ftr_weights_s = [(p, k, new_weights[k]) for p, k in enumerate(sorted(new_weights, key=new_weights.get))]
+    
+    for p, k, v in ftr_weights_s:
+        higher_ftrs = np.array([w[2] for w in ftr_weights_s[p+1:]])
+        W_j = higher_ftrs.sum()/higher_ftrs.shape[0]
+    
+        ftr_counts = np.array(list(features[k].valDict.values()))
+        ftr_pe = features[k].calcEntropy(ftr_counts)
+        ftr_sig = calcObjetSignificance(ftr_pe, ftr_counts)
+     
+        higher_counts = np.array(list(itertools.chain.from_iterable([list(feat.valDict.values()) for feat in features[higher_ftrs]])))
+        higher_pe = calcPartitionEntropy(higher_counts)
+        higher_sig = calcObjetSignificance(higher_pe, higher_counts)
+
+        for i in range(info['n_rows']):
+            ftr_val = features[k].vals[i - np.sum(features[k].missing > i)] if i != features[k].missing else np.nan
+            higher_vals = [feat.vals[i - np.sum(feat.missing > i)] if i != feat.missing else np.nan for feat in features[higher_ftrs]]
+            
+            attr_partition = attr_part.index(attr_val)
+            attr_cnt = attr_counts[attr_partition]
+            attr_sig = attr_partition_sigs[attr_partition]
+            
+            higher_attrs_partition = higher_attrs_part.index(higher_attrs_val)
+            higher_attrs_cnt = higher_attrs_counts[higher_attrs_partition]
+            higher_attrs_sig = higher_attrs_partition_sigs[higher_attrs_partition]
+            
+            peof_factors[i][j] = (w_j * attr_cnt * attr_sig + W_j * higher_attrs_cnt * higher_attrs_sig)/(2*num_rows)
+            
+        return np.sum(peof_factors, axis =1)
+'''
+        
+        
     
